@@ -1,64 +1,73 @@
-// 1) Сделать удаление студента
-// 2) Переписать вытягивание студентов из базы данных
-// 3) Решить проблему с id у каждого студента
+document.addEventListener('DOMContentLoaded', () => {
 
-document.addEventListener('DOMContentLoaded', async () => {
-    let studentsList = await getStudents();
+    // серверные функции
+    async function getStudentsFromServer() {
+        const response = await fetch('http://localhost:3000/students');
+        const data = await response.json();
 
-    async function getStudents() {
-        try {
-            const response = await fetch('http://localhost:3000/students');
-            const data = await response.json();
-            return data || [];
-        } catch (error) {
-            console.log('Error fetching students', error);
-            return [];
+        return data || [];
+    }
+
+    function addStudentToServer(studentObj) {
+        fetch('http://localhost:3000/students', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(studentObj)
+        });
+    }
+
+    function deleteStudentFromServer(studentId) {
+        fetch(`http://localhost:3000/students/${studentId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+    }
+
+    // фильтрация и сортировка студентов
+    function sortStudentsArray(studentsArray, key) {
+        const sortedStudentsArray = studentsArray.slice().sort((student, prevStudent) => {
+            let currentValue = student[key];
+            let prevValue = prevStudent[key];
+
+            if (key === 'name') {
+                currentValue = (student.surname + student.name + student.middlename).toLowerCase();
+                prevValue = (prevStudent.surname + prevStudent.name + prevStudent.middlename).toLowerCase();
+            }
+            if (currentValue > prevValue) {
+                return 1;
+            }
+            if (currentValue < prevValue) {
+                return -1;
+            }
+            return 0;
+        }); 
+        
+        return sortedStudentsArray;
+    }
+
+    function filterStudentsArray(studentsArray, inputValue, key) {
+        
+        if (key === 'name') {
+            return studentsArray.filter(student => 
+                (student.surname + ' ' + student.name + ' ' + student.middlename).toLowerCase().includes(inputValue.toLowerCase()));
+        }
+        else if (key === 'faculty') {
+            return studentsArray.filter(student => (student[key]).includes(inputValue));
+        }
+        else if (key === 'start') {
+            return studentsArray.filter(student => student.startOfStudying.includes(inputValue));
+        }
+        else {
+            return studentsArray.filter(student => 
+                String(Number(student.startOfStudying) + 4).includes(inputValue));
         }
     }
 
-    // console.log(studentsList);
-
-    if (studentsList.length) {
-        studentsList.forEach(student => {
-            student.dateOfBirth = new Date(student.dateOfBirth);
-        });
-        renderStudentsTable(studentsList);
-    }
-
-    async function addStudent(studentObj) {
-        await fetch('http://localhost:3000/students', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }, 
-            body: JSON.stringify({
-                id: Math.ceil(Math.random() * 1000),
-                surname: studentObj.surname, 
-                name: studentObj.name,
-                middlename: studentObj.middlename,
-                faculty: studentObj.faculty, 
-                dateOfBirth: studentObj.dateOfBirth,
-                startOfStudying: studentObj.startOfStudying
-            })
-        });
-    }
-
-    // getStudents()
-    //     .then(data => {
-    //         studentsList = data;
-    //         studentsList.forEach(student => {
-    //             student.dateOfBirth = new Date(student.dateOfBirth);
-    //           });
-    //         console.log(studentsList);
-
-    //         renderStudentsTable(studentsList);
-    //     })
-    //     .catch (error => {
-    //         console.error('Error getting students:', error);
-    //     });
-
-    // вычисление возраста, курса и форматирование времени
+    //форматирование текста
     function getStudentAge(birthDate) {
         const now = new Date();
         
@@ -102,51 +111,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         return formattedDate;
     }
 
-    function sortStudentsArray(studentsArray, key) {
-        const sortedStudentsArray = studentsArray.slice().sort((student, prevStudent) => {
-
-            let currentValue = student[key];
-            let prevValue = prevStudent[key];
-
-            if (key === 'name') {
-                currentValue = (student.surname + student.name + student.middlename).toLowerCase();
-                prevValue = (prevStudent.surname + prevStudent.name + prevStudent.middlename).toLowerCase();
-            }
-    
-            if (currentValue > prevValue) {
-                return 1;
-            }
-            if (currentValue < prevValue) {
-                return -1;
-            }
-            return 0;
-        }); 
-    
-        return sortedStudentsArray;
-    }
-
-    function filterStudentsArray(studentsArray, inputValue, key) {
-        if (key === 'name') {
-            return studentsArray.filter(student => 
-                (student.surname + ' ' + student.name + ' ' + student.middlename).toLowerCase().includes(inputValue.toLowerCase()));
-        }
-        else if (key === 'faculty') {
-            return studentsArray.filter(student => (student[key]).includes(inputValue));
-        }
-        else if (key === 'start') {
-            return studentsArray.filter(student => student.startOfStudying.includes(inputValue));
-        }
-        else {
-            return studentsArray.filter(student => 
-                String(Number(student.startOfStudying) + 4).includes(inputValue));
-        }
-    }
-
-    // Создание одной строчки со студентом
-    
-    function createStudentRow(studentObj) { 
+    // table rendering
+    function createStudentRow(studentsArray, studentObj, onDelete) { 
         const studentRow = document.createElement('tr');
-        
+    
+        const deleteButtonTd = document.createElement('td');
+        deleteButtonTd.dataset.id = studentObj.id;
+        deleteButtonTd.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"> <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/> 
+        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/> </svg>`;
+        deleteButtonTd.classList.add('delete-button');
+        deleteButtonTd.addEventListener('click', () => {
+            const studentId = deleteButtonTd.dataset.id;
+            onDelete(studentId);
+            studentsArray = studentsArray.filter(student => student.id !== studentId);
+            studentRow.remove();
+        });
+
         const fullNameTd = document.createElement('td');
         const facultyTd = document.createElement('td');
         const dateOfBirthTd = document.createElement('td');
@@ -158,6 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         yearsOfStudyTd.textContent = formatYearsOfStudy(studentObj);
 
         studentRow.append(
+            deleteButtonTd,
             fullNameTd, 
             facultyTd,
             dateOfBirthTd,
@@ -166,25 +147,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         return studentRow; //tr
     }
-    
-    function displayError(message) {
-        const label = document.querySelector('.alert-label');
-        label.textContent = message;
-    }
 
-    // Отрисовка внутреннего содержания таблицы
-    function renderStudentsTable(studentsArray) {
+    function renderStudentsTable(studentsArray, onDelete) {
         const tableBody = document.querySelector('tbody');
         tableBody.innerHTML = '';
-    
+        
         studentsArray.forEach(student => {
-            const studentRow = createStudentRow(student);
+            const studentRow = createStudentRow(studentsArray, student, onDelete);
             tableBody.append(studentRow);
         });
     }
 
-    // Пользовательский ввод студента ---> добавление студента в массив
-    function getUserInput(studentsArray) {
+    function createUserInput(studentsArray, onAdd) {
         const inputs = [
             document.getElementById('surNameInput'),
             document.getElementById('nameInput'),
@@ -216,7 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         startOfStudying: inputs[5].value,
                     };
 
-                    addStudent(studentObj);
+                    onAdd(studentObj); //
     
                     studentsArray.push(studentObj);
                     renderStudentsTable(studentsArray);
@@ -235,6 +209,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function createTableControls() {
+        const filterInputs = [
+            document.getElementById('name-filter'),
+            document.getElementById('faculty-filter'),
+            document.getElementById('studying-start-filter'),
+            document.getElementById('studying-end-filter')
+        ];
+    
+        const sortButtons = [
+            document.getElementById('name'),
+            document.getElementById('faculty'),
+            document.getElementById('birth-date'),
+            document.getElementById('study')
+        ];
+    
+        return {
+            filterInputs,
+            sortButtons
+        };
+    }
+
     // Валидация даты рождения
     function validateDateOfBirth(inputDate) {
         const minDate = new Date(1900, 0, 1);
@@ -247,40 +242,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     function validateStartStudyingYear(year) {
         return (year >= 2000) && (year <= 2023);
     }
+    
+    function displayError(message) {
+        const label = document.querySelector('.alert-label');
+        label.textContent = message;
+    }
 
-    const filterInputs = [
-        document.getElementById('name-filter'),
-        document.getElementById('faculty-filter'),
-        document.getElementById('studying-start-filter'),
-        document.getElementById('studying-end-filter')
-    ];
-
-    const sortButtons = [
-        document.getElementById('name'),
-        document.getElementById('faculty'),
-        document.getElementById('birth-date'),
-        document.getElementById('study')
-    ];
-
-    filterInputs.forEach((input, index) => {
-        input.addEventListener('input', () => {
-            const key = index === 0 ? 'name' : index === 1 ? 'faculty' : index === 2 ? 'start' : 'end'; 
-            renderStudentsTable(filterStudentsArray(studentsList, input.value, key));
+    // tableControls event listeners
+    function setupFilterListeners(filterInputs, studentsArray, onDelete) {
+        filterInputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                const key = index === 0 ? 'name' : index === 1 ? 'faculty' : index === 2 ? 'start' : 'end';
+                renderStudentsTable(filterStudentsArray(studentsArray, input.value, key), onDelete);
+            });
         });
-    });
-
-    sortButtons.forEach((sortButton, index) => {
-        sortButton.addEventListener('click', () => {
-            const key = index === 0 ? 'name' : index === 1 ? 'faculty' : index === 2 ? 'dateOfBirth' : 'startOfStudying';
-            renderStudentsTable(sortStudentsArray(studentsList.slice(), key));
+    }
+    
+    function setupSortListeners(sortButtons, studentsArray, onDelete) {
+        sortButtons.forEach((sortButton, index) => {
+            sortButton.addEventListener('click', () => {
+                const key = index === 0 ? 'name' : index === 1 ? 'faculty' : index === 2 ? 'dateOfBirth' : 'startOfStudying';
+                renderStudentsTable(sortStudentsArray(studentsArray, key), onDelete);
+            });
         });
-    });
- 
-    getUserInput(studentsList);
+    }
+
+    async function createTableApp() {
+        let studentsList = await getStudentsFromServer();
+        
+        const handlers = {
+            onDelete(studentId) {
+                deleteStudentFromServer(studentId);
+                const studentIndex = studentsList.findIndex(student => student.id == studentId);
+                if (studentIndex !== -1) {
+                    studentsList.splice(studentIndex, 1);
+                }
+            },
+            onAdd(studentObj) {
+                addStudentToServer(studentObj);
+            }
+        };
+
+        if (studentsList.length) {
+            studentsList.forEach(student => {
+                student.dateOfBirth = new Date(student.dateOfBirth);
+            });
+        } 
+        
+        const { filterInputs, sortButtons } = createTableControls();
+        
+        setupFilterListeners(filterInputs, studentsList, handlers.onDelete);
+        setupSortListeners(sortButtons, studentsList, handlers.onDelete);
+
+        renderStudentsTable(studentsList, handlers.onDelete);
+        createUserInput(studentsList, handlers.onAdd);
+    }
+    
+    createTableApp();
 });
-
-
-
-
-
-

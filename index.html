@@ -16,6 +16,11 @@
             width: 200px;
             margin-right: 10px;
         }
+
+        .delete-button:hover {
+            cursor: pointer;
+            background-color:rgb(232, 75, 75);
+        }
       </style>
     <title>Document</title>
 </head>
@@ -47,6 +52,7 @@
             <caption>Список студентов</caption>
             <thead class="table-dark">
                 <tr>
+                    <th scope="col"></th>
                     <th scope="col" id="name">Ф. И. О. студента</th>
                     <th scope="col" id="faculty">Факультет</th>
                     <th scope="col" id="birth-date">Дата рождения</th>

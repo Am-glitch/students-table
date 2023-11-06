@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // table rendering
-    function createStudentRow(studentsArray, studentObj, onDelete) { 
+    function createStudentRow(studentObj, onDelete) { 
         const studentRow = document.createElement('tr');
     
         const deleteButtonTd = document.createElement('td');
@@ -123,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButtonTd.addEventListener('click', () => {
             const studentId = deleteButtonTd.dataset.id;
             onDelete(studentId);
-            studentsArray = studentsArray.filter(student => student.id !== studentId);
             studentRow.remove();
         });
 
@@ -153,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = '';
         
         studentsArray.forEach(student => {
-            const studentRow = createStudentRow(studentsArray, student, onDelete);
+            const studentRow = createStudentRow(student, onDelete);
             tableBody.append(studentRow);
         });
     }
